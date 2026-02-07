@@ -7,10 +7,10 @@ import random
 from datetime import datetime
 
 # ==============================================================================
-# [WA Platform Ver 6.0] Global Standard Edition
-# 1. Multi-language (KR, EN, CN)
-# 2. Safe Number Simulation (Privacy Protection)
-# 3. WA Branding
+# [WA Platform Ver 6.2] Final Optimized Edition
+# 1. 주차 탭: "순수 정산 시스템"으로 복구 (전화 기능 삭제, Ver 5.0 스타일)
+# 2. 사물/미아 탭: "주인 찾기 & 안심번호" 특화 (요청하신 UI 적용)
+# 3. 미술품 탭: S급 감별 유지
 # ==============================================================================
 
 # --- [1] 다국어 사전 (Language Dictionary) ---
@@ -21,25 +21,42 @@ LANG = {
         "tab1": "🎨 미술품(Art)",
         "tab2": "🚗 주차(Car)",
         "tab3": "🧸 사물/미아(Object)",
+        
+        # 공통
         "reg_title": "등록 (Register)",
         "ver_title": "검증 (Verify)",
         "upload_org": "원본 이미지 업로드",
-        "upload_ver": "검증할 이미지 업로드",
+        "upload_ver": "이미지 업로드",
+        "btn_reg": "등록하기",
+        "reg_success": "등록이 완료되었습니다.",
+        "err_no_data": "등록된 데이터가 없습니다.",
+        
+        # 탭별 입력창
         "name_input": "작품명/소유자",
         "car_input": "차량 번호",
         "obj_input": "이름/연락처 (실제 번호)",
-        "btn_reg": "등록하기",
-        "btn_ver": "검증하기",
-        "btn_call": "📞 안심번호로 전화걸기",
+        
+        # 버튼
+        "btn_ver_art": "검증하기",
+        "btn_ver_car": "출차/정산 요청", # 주차 전용
+        "btn_find_owner": "주인찾기",    # 사물 전용
+        
+        # 메시지
         "mode_strict": "🕵️ S급 모사품 감별 (초정밀)",
-        "success_gen": "🎉 진품입니다!",
-        "fail_gen": "🚨 가품/불일치",
+        "success_art": "🎉 진품입니다!",
+        "success_car": "✅ 차량 인식 성공",
+        "fail_gen": "🚨 데이터 불일치 / 정보 없음",
+        
         "info_score": "점수",
         "info_ratio": "일치율",
-        "safe_num_msg": "안심번호가 생성되었습니다:",
-        "calling_msg": "안심번호로 연결 중입니다...",
-        "reg_success": "등록이 완료되었습니다.",
-        "err_no_data": "등록된 데이터가 없습니다.",
+        
+        # 안심번호 (사물 탭 전용)
+        "safe_num_msg": "안심번호 생성:",
+        "owner_contact": "소유자 연락처: 안심번호",
+        "btn_call_simple": "📞 전화걸기",
+        "calling_msg": "연결 중입니다...",
+        
+        # 주차 요금
         "calc_fee": "주차 요금",
         "parking_time": "주차 시간",
         "min": "분"
@@ -51,24 +68,28 @@ LANG = {
         "tab2": "🚗 Car",
         "tab3": "🧸 Object",
         "reg_title": "Register",
-        "ver_title": "Verify",
-        "upload_org": "Upload Original Image",
-        "upload_ver": "Upload Image to Verify",
+        "ver_title": "Verify / Find",
+        "upload_org": "Upload Original",
+        "upload_ver": "Upload Image",
+        "btn_reg": "Register",
+        "reg_success": "Registration Complete.",
+        "err_no_data": "No data found.",
         "name_input": "Artwork Name / Owner",
         "car_input": "License Plate",
         "obj_input": "Name / Phone (Real)",
-        "btn_reg": "Register",
-        "btn_ver": "Verify",
-        "btn_call": "📞 Call via Safe Number",
-        "mode_strict": "🕵️ Forensic Mode (Strict)",
-        "success_gen": "🎉 Authentic / Match Found!",
-        "fail_gen": "🚨 Fake / No Match",
+        "btn_ver_art": "Verify",
+        "btn_ver_car": "Check Out",
+        "btn_find_owner": "Find Owner",
+        "mode_strict": "🕵️ Forensic Mode",
+        "success_art": "🎉 Authentic!",
+        "success_car": "✅ Car Identified",
+        "fail_gen": "🚨 No Match Found",
         "info_score": "Score",
         "info_ratio": "Ratio",
-        "safe_num_msg": "Safe Number Generated:",
-        "calling_msg": "Calling via Safe Number...",
-        "reg_success": "Registration Complete.",
-        "err_no_data": "No data registered.",
+        "safe_num_msg": "Safe #:",
+        "owner_contact": "Owner Contact (Safe #):",
+        "btn_call_simple": "📞 Call",
+        "calling_msg": "Calling...",
         "calc_fee": "Fee",
         "parking_time": "Duration",
         "min": "min"
@@ -80,31 +101,35 @@ LANG = {
         "tab2": "🚗 停车",
         "tab3": "🧸 寻物/寻人",
         "reg_title": "注册",
-        "ver_title": "验证",
+        "ver_title": "验证 / 寻找",
         "upload_org": "上传原始图片",
-        "upload_ver": "上传验证图片",
+        "upload_ver": "上传图片",
+        "btn_reg": "注册",
+        "reg_success": "注册完成。",
+        "err_no_data": "没有数据。",
         "name_input": "作品名称 / 所有者",
         "car_input": "车牌号码",
         "obj_input": "姓名 / 电话 (真实)",
-        "btn_reg": "注册",
-        "btn_ver": "验证",
-        "btn_call": "📞 拨打虚拟号码",
-        "mode_strict": "🕵️ 超精密鉴别模式",
-        "success_gen": "🎉 正品 / 匹配成功!",
-        "fail_gen": "🚨 赝品 / 不匹配",
+        "btn_ver_art": "验证",
+        "btn_ver_car": "结算请求",
+        "btn_find_owner": "寻找失主",
+        "mode_strict": "🕵️ 精密鉴别模式",
+        "success_art": "🎉 正品!",
+        "success_car": "✅ 车辆识别成功",
+        "fail_gen": "🚨 不匹配",
         "info_score": "分数",
         "info_ratio": "匹配率",
-        "safe_num_msg": "已生成虚拟号码:",
-        "calling_msg": "正在通过虚拟号码连接...",
-        "reg_success": "注册完成。",
-        "err_no_data": "没有注册数据。",
+        "safe_num_msg": "虚拟号码:",
+        "owner_contact": "失主联系方式 (虚拟号):",
+        "btn_call_simple": "📞 拨打电话",
+        "calling_msg": "正在连接...",
         "calc_fee": "停车费",
         "parking_time": "停车时间",
         "min": "分"
     }
 }
 
-# --- [2] 엔진 (Ver 4.3 Core) ---
+# --- [2] 엔진 (Ver 4.3 Core 유지) ---
 def resize_optimized(img_array, max_dim):
     h, w = img_array.shape[:2]
     if max(h, w) > max_dim:
@@ -203,22 +228,20 @@ if 'artworks' not in st.session_state: st.session_state['artworks'] = []
 if 'cars' not in st.session_state: st.session_state['cars'] = []
 if 'objects' not in st.session_state: st.session_state['objects'] = []
 
-# 언어 선택 사이드바
 with st.sidebar:
     st.title("🌐 Language")
     lang_code = st.radio("Select Language", ["KR", "EN", "CN"])
     
-txt = LANG[lang_code] # 선택된 언어 팩 로드
+txt = LANG[lang_code]
 
 st.title(f"📱 {txt['title']}")
 
-# 안심번호 생성기 (데모용)
 def get_safe_number():
     return f"0505-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
 
 tab1, tab2, tab3 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3']])
 
-# 1. 미술품 탭
+# 1. 미술품 탭 (Forensic Mode)
 with tab1:
     c1, c2 = st.columns(2)
     with c1:
@@ -233,7 +256,7 @@ with tab1:
         st.subheader(txt['ver_title'])
         ver = st.file_uploader(txt['upload_ver'], key="a_ver")
         strict = st.checkbox(txt['mode_strict'], key="strict")
-        if ver and st.button(txt['btn_ver']):
+        if ver and st.button(txt['btn_ver_art']):
             t_img = Image.open(ver)
             if not st.session_state['artworks']: st.error(txt['err_no_data']); st.stop()
             best = (None, 0, 0, None)
@@ -247,12 +270,12 @@ with tab1:
             if r < 1.0: is_genuine = False
 
             if item and is_genuine:
-                st.success(f"{txt['success_gen']} ({item['name']})")
+                st.success(f"{txt['success_art']} ({item['name']})")
                 st.write(f"{txt['info_score']}: {c} / {txt['info_ratio']}: {r:.1f}%")
                 st.image(img, use_container_width=True)
             else: st.error(txt['fail_gen'])
 
-# 2. 주차 탭 (안심번호 추가)
+# 2. 주차 탭 (복구: 전화 기능 삭제, 순수 정산 모드)
 with tab2:
     c3, c4 = st.columns(2)
     with c3:
@@ -260,18 +283,16 @@ with tab2:
         with st.form("car_reg", clear_on_submit=True):
             up = st.file_uploader(txt['upload_org'], key="c_up")
             no = st.text_input(txt['car_input'])
-            # 실제 번호 입력받지만, 내부적으로 안심번호 생성
-            phone = st.text_input(txt['obj_input']) 
+            # [복구] 연락처 입력 삭제 (안심번호 미사용)
             if st.form_submit_button(txt['btn_reg']) and up:
-                safe_num = get_safe_number()
                 st.session_state['cars'].append({
-                    "image": Image.open(up), "no": no, "phone": safe_num, "time": datetime.now()
+                    "image": Image.open(up), "no": no, "time": datetime.now()
                 })
-                st.success(f"{txt['reg_success']} ({txt['safe_num_msg']} {safe_num})")
+                st.success(txt['reg_success'])
     with c4:
         st.subheader(txt['ver_title'])
         ver = st.file_uploader(txt['upload_ver'], key="c_ver")
-        if ver and st.button(txt['btn_ver']):
+        if ver and st.button(txt['btn_ver_car']):
             t_img = Image.open(ver)
             if not st.session_state['cars']: st.error(txt['err_no_data']); st.stop()
             best = (None, 0, 0)
@@ -282,17 +303,12 @@ with tab2:
             if item and c >= 10 and r >= 15.0:
                 duration = datetime.now() - item['time']
                 fee = (duration.seconds // 60 // 10) * 1000
-                st.success(f"{txt['success_gen']} : {item['no']}")
+                st.success(f"{txt['success_car']} : {item['no']}")
                 st.info(f"{txt['parking_time']}: {duration.seconds//60}{txt['min']} / {txt['calc_fee']}: {fee:,}")
-                
-                # 안심번호 통화 버튼
-                st.markdown("---")
-                st.write(f"📞 **{txt['safe_num_msg']} {item['phone']}**")
-                if st.button(txt['btn_call'], key="call_car"):
-                    st.toast(f"{txt['calling_msg']} ({item['phone']})")
+                # [복구] 전화 걸기 버튼 삭제
             else: st.error(txt['fail_gen'])
 
-# 3. 사물 탭 (안심번호 추가)
+# 3. 사물/미아 탭 (요청사항 적용: 주인찾기 & 안심번호 특화)
 with tab3:
     c5, c6 = st.columns(2)
     with c5:
@@ -307,7 +323,9 @@ with tab3:
     with c6:
         st.subheader(txt['ver_title'])
         ver = st.file_uploader(txt['upload_ver'], key="o_ver")
-        if ver and st.button(txt['btn_ver']):
+        
+        # 버튼: 주인찾기
+        if ver and st.button(txt['btn_find_owner']):
             t_img = Image.open(ver)
             if not st.session_state['objects']: st.error(txt['err_no_data']); st.stop()
             best = (None, 0, 0)
@@ -315,13 +333,17 @@ with tab3:
                 is_g, c, r, _ = match_engine(item['image'], t_img, "fast")
                 if c > best[1]: best = (item, c, r)
             item, c, r = best
+            
             if item and c >= 10 and r >= 15.0:
-                st.success(f"{txt['success_gen']}")
-                st.info(f"Owner: {item['info']}")
+                # '진품입니다' 삭제 -> 바로 이름 표시
+                st.success(f"✅ {item['info']}") 
                 
-                # 안심번호 통화 버튼
                 st.markdown("---")
-                st.write(f"📞 **{txt['safe_num_msg']} {item['phone']}**")
-                if st.button(txt['btn_call'], key="call_obj"):
+                # 문구: 소유자 연락처: 안심번호 0505...
+                st.subheader(f"{txt['owner_contact']} {item['phone']}")
+                
+                # 버튼: 전화걸기
+                if st.button(txt['btn_call_simple'], key="call_obj"):
                     st.toast(f"{txt['calling_msg']} ({item['phone']})")
             else: st.error(txt['fail_gen'])
+
