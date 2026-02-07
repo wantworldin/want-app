@@ -3,14 +3,108 @@ from PIL import Image
 import numpy as np
 import cv2
 import math
+import random
 from datetime import datetime
 
 # ==============================================================================
-# [WES Final Ver 4.3] Forensic Mode (Anti-Forgery)
-# 핵심 기능: 'S급 모사품'을 잡기 위한 초정밀 검증(Forensic) 옵션 추가
-# 일반 모드는 유연하게, 감별 모드는 오차 1.0 미만으로 칼같이 차단
+# [WA Platform Ver 6.0] Global Standard Edition
+# 1. Multi-language (KR, EN, CN)
+# 2. Safe Number Simulation (Privacy Protection)
+# 3. WA Branding
 # ==============================================================================
 
+# --- [1] 다국어 사전 (Language Dictionary) ---
+LANG = {
+    "KR": {
+        "title": "WA 플랫폼 (Want Appraiser)",
+        "sidebar_title": "언어 설정 (Language)",
+        "tab1": "🎨 미술품(Art)",
+        "tab2": "🚗 주차(Car)",
+        "tab3": "🧸 사물/미아(Object)",
+        "reg_title": "등록 (Register)",
+        "ver_title": "검증 (Verify)",
+        "upload_org": "원본 이미지 업로드",
+        "upload_ver": "검증할 이미지 업로드",
+        "name_input": "작품명/소유자",
+        "car_input": "차량 번호",
+        "obj_input": "이름/연락처 (실제 번호)",
+        "btn_reg": "등록하기",
+        "btn_ver": "검증하기",
+        "btn_call": "📞 안심번호로 전화걸기",
+        "mode_strict": "🕵️ S급 모사품 감별 (초정밀)",
+        "success_gen": "🎉 진품입니다!",
+        "fail_gen": "🚨 가품/불일치",
+        "info_score": "점수",
+        "info_ratio": "일치율",
+        "safe_num_msg": "안심번호가 생성되었습니다:",
+        "calling_msg": "안심번호로 연결 중입니다...",
+        "reg_success": "등록이 완료되었습니다.",
+        "err_no_data": "등록된 데이터가 없습니다.",
+        "calc_fee": "주차 요금",
+        "parking_time": "주차 시간",
+        "min": "분"
+    },
+    "EN": {
+        "title": "WA Platform (Want Appraiser)",
+        "sidebar_title": "Language Settings",
+        "tab1": "🎨 Art",
+        "tab2": "🚗 Car",
+        "tab3": "🧸 Object",
+        "reg_title": "Register",
+        "ver_title": "Verify",
+        "upload_org": "Upload Original Image",
+        "upload_ver": "Upload Image to Verify",
+        "name_input": "Artwork Name / Owner",
+        "car_input": "License Plate",
+        "obj_input": "Name / Phone (Real)",
+        "btn_reg": "Register",
+        "btn_ver": "Verify",
+        "btn_call": "📞 Call via Safe Number",
+        "mode_strict": "🕵️ Forensic Mode (Strict)",
+        "success_gen": "🎉 Authentic / Match Found!",
+        "fail_gen": "🚨 Fake / No Match",
+        "info_score": "Score",
+        "info_ratio": "Ratio",
+        "safe_num_msg": "Safe Number Generated:",
+        "calling_msg": "Calling via Safe Number...",
+        "reg_success": "Registration Complete.",
+        "err_no_data": "No data registered.",
+        "calc_fee": "Fee",
+        "parking_time": "Duration",
+        "min": "min"
+    },
+    "CN": {
+        "title": "WA 平台 (Want Appraiser)",
+        "sidebar_title": "语言设置",
+        "tab1": "🎨 艺术品",
+        "tab2": "🚗 停车",
+        "tab3": "🧸 寻物/寻人",
+        "reg_title": "注册",
+        "ver_title": "验证",
+        "upload_org": "上传原始图片",
+        "upload_ver": "上传验证图片",
+        "name_input": "作品名称 / 所有者",
+        "car_input": "车牌号码",
+        "obj_input": "姓名 / 电话 (真实)",
+        "btn_reg": "注册",
+        "btn_ver": "验证",
+        "btn_call": "📞 拨打虚拟号码",
+        "mode_strict": "🕵️ 超精密鉴别模式",
+        "success_gen": "🎉 正品 / 匹配成功!",
+        "fail_gen": "🚨 赝品 / 不匹配",
+        "info_score": "分数",
+        "info_ratio": "匹配率",
+        "safe_num_msg": "已生成虚拟号码:",
+        "calling_msg": "正在通过虚拟号码连接...",
+        "reg_success": "注册完成。",
+        "err_no_data": "没有注册数据。",
+        "calc_fee": "停车费",
+        "parking_time": "停车时间",
+        "min": "分"
+    }
+}
+
+# --- [2] 엔진 (Ver 4.3 Core) ---
 def resize_optimized(img_array, max_dim):
     h, w = img_array.shape[:2]
     if max(h, w) > max_dim:
@@ -20,243 +114,214 @@ def resize_optimized(img_array, max_dim):
     return img_array
 
 def calculate_angles(pt1, pt2, pt3):
-    def length(p1, p2):
-        return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    def length(p1, p2): return np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
     a, b, c = length(pt2, pt3), length(pt1, pt3), length(pt1, pt2)
-    if a == 0 or b == 0 or c == 0: return [0, 0, 0]
+    if a==0 or b==0 or c==0: return [0,0,0]
     try:
-        val_A = (b**2 + c**2 - a**2) / (2 * b * c)
-        val_B = (a**2 + c**2 - b**2) / (2 * a * c)
-        val_A = max(-1.0, min(1.0, val_A))
-        val_B = max(-1.0, min(1.0, val_B))
-        angle_A = math.degrees(math.acos(val_A))
-        angle_B = math.degrees(math.acos(val_B))
+        angle_A = np.degrees(np.arccos(np.clip((b**2+c**2-a**2)/(2*b*c), -1.0, 1.0)))
+        angle_B = np.degrees(np.arccos(np.clip((a**2+c**2-b**2)/(2*a*c), -1.0, 1.0)))
         angle_C = 180 - angle_A - angle_B
-    except ValueError: return [0, 0, 0]
+    except: return [0,0,0]
     return sorted([angle_A, angle_B, angle_C])
 
-def verify_geometry(kp1, kp2, good_matches, strict_mode=False):
-    """
-    strict_mode=True일 경우: 모사품 감별을 위해 허용 오차를 극단적으로 줄임
-    """
-    pts1 = [kp1[m.queryIdx].pt for m in good_matches]
-    pts2 = [kp2[m.trainIdx].pt for m in good_matches]
-    final_indices = set()
-    
-    # 1. RANSAC 임계값 조정
-    # 일반: 4.0 (유연함) / 감별: 1.0 (픽셀 단위 일치 요구)
+def verify_geometry(kp1, kp2, good_matches, strict_mode):
     ransac_thresh = 1.0 if strict_mode else 4.0
-    
-    if len(good_matches) >= 4:
-        src_pts = np.float32(pts1).reshape(-1, 1, 2)
-        dst_pts = np.float32(pts2).reshape(-1, 1, 2)
-        M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, ransac_thresh)
-        if M is None: return []
-        matches_mask = mask.ravel().tolist()
-        global_correct_matches = [good_matches[i] for i in range(len(good_matches)) if matches_mask[i]]
-    else: return []
-
-    # 2. 각도 검증 임계값 조정
-    # 일반: 3.0도 허용 / 감별: 1.0도 허용 (사람 손으로는 절대 못 맞춤)
     angle_thresh = 1.0 if strict_mode else 3.0
-    
-    check_list = global_correct_matches[:300]
+    src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    if len(good_matches) < 4: return []
+    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, ransac_thresh)
+    if M is None: return []
+    matches_mask = mask.ravel().tolist()
+    global_correct = [good_matches[i] for i in range(len(good_matches)) if matches_mask[i]]
+    final_indices = set()
+    check_list = global_correct[:200]
     for i in range(len(check_list) - 2):
         m1, m2, m3 = check_list[i], check_list[i+1], check_list[i+2]
         p1, p2, p3 = kp1[m1.queryIdx].pt, kp1[m2.queryIdx].pt, kp1[m3.queryIdx].pt
         q1, q2, q3 = kp2[m1.trainIdx].pt, kp2[m2.trainIdx].pt, kp2[m3.trainIdx].pt
-        ang1 = calculate_angles(p1, p2, p3)
-        ang2 = calculate_angles(q1, q2, q3)
-        diff = sum([abs(a - b) for a, b in zip(ang1, ang2)])
-        
-        if diff < angle_thresh:
-            final_indices.add(m1); final_indices.add(m2); final_indices.add(m3)
-            
+        ang1, ang2 = calculate_angles(p1, p2, p3), calculate_angles(q1, q2, q3)
+        if sum([abs(a-b) for a,b in zip(ang1, ang2)]) < angle_thresh:
+            final_indices.update([m1, m2, m3])
     return list(final_indices)
 
-def match_art_forensic(img1_pil, img2_pil, strict_mode):
-    # 해상도: 감별 모드에서는 2K (2000px), 일반은 1280px도 충분하지만 안전하게 2000 통일
-    img1_cv = resize_optimized(np.array(img1_pil), max_dim=2000)
-    img2_cv = resize_optimized(np.array(img2_pil), max_dim=2000)
-    
-    gray1 = cv2.cvtColor(img1_cv, cv2.COLOR_RGB2GRAY)
-    gray2 = cv2.cvtColor(img2_cv, cv2.COLOR_RGB2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-    gray1 = clahe.apply(gray1); gray2 = clahe.apply(gray2)
-
-    sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=0.03, edgeThreshold=10)
-    kp1, des1 = sift.detectAndCompute(gray1, None)
-    if des1 is None or len(des1) < 10: return False, 0, 0, None, "특징점 부족"
-
-    scales = [0.5, 1.0] 
-    flann = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), dict(checks=40))
-    
-    best_count = 0; best_ratio = 0.0; best_img = None; best_scale = 1.0
-
-    for scale in scales:
-        try:
-            if scale == 1.0: resized_gray2 = gray2; resized_kp2_img = img2_cv
-            else:
-                new_w = int(gray2.shape[1] * scale); new_h = int(gray2.shape[0] * scale)
-                if new_w < 50 or new_h < 50: continue
-                resized_gray2 = cv2.resize(gray2, (new_w, new_h), interpolation=cv2.INTER_AREA)
-                resized_kp2_img = cv2.resize(img2_cv, (new_w, new_h))
-
-            kp2, des2 = sift.detectAndCompute(resized_gray2, None)
-            total_target_kps = len(kp2)
-            if des2 is None or total_target_kps < 10: continue
-
-            matches = flann.knnMatch(des1, des2, k=2)
-            # 감별 모드일 때는 Ratio test도 0.7로 강화 (아주 똑같은 것만 허용)
-            ratio_thresh = 0.7 if strict_mode else 0.75
-            good_matches = [m for m, n in matches if m.distance < ratio_thresh * n.distance]
-            
-            # [핵심] strict_mode 전달
-            final_matches = verify_geometry(kp1, kp2, good_matches, strict_mode)
-            current_count = len(final_matches)
-            current_ratio = (current_count / total_target_kps) * 100 if total_target_kps > 0 else 0
-
-            if current_count > best_count:
-                best_count = current_count; best_ratio = current_ratio; best_scale = scale
-                res_img = cv2.drawMatches(img1_cv, kp1, resized_kp2_img, kp2, final_matches, None, flags=2, matchColor=(0, 255, 0))
-                best_img = cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB)
-                if best_ratio > 15.0 and best_count > 200: break
-        except: continue
-
-    is_genuine = False
-    
-    if strict_mode:
-        # [감별 모드] 점수가 팍 깎이므로 기준을 조금 낮게 잡되, 통과했다는 것 자체가 대단한 것임
-        if best_count >= 50 and best_ratio >= 3.0: is_genuine = True
-    else:
-        # [일반 모드] 기존 Ver 4.2 로직 (유연함)
-        if best_count >= 80: is_genuine = True
-        elif best_count >= 15 and best_ratio >= 10.0: is_genuine = True
-    
-    if best_ratio < 1.0: is_genuine = False # 안전장치
-
-    mode_str = "S급 모사품 감별" if strict_mode else "일반 검증"
-    msg = f"🛡️ [{mode_str}] {best_count}점 (매칭률 {best_ratio:.1f}%)"
-    return is_genuine, best_count, best_ratio, best_img, msg
-
-# --- 고속 엔진 (유지) ---
-def match_fast_rapid(img1_pil, img2_pil):
-    img1_cv = np.array(img1_pil); img2_cv = np.array(img2_pil)
-    img1_small = resize_optimized(img1_cv, max_dim=640)
-    img2_small = resize_optimized(img2_cv, max_dim=640)
-    gray1 = cv2.cvtColor(img1_small, cv2.COLOR_RGB2GRAY)
-    gray2 = cv2.cvtColor(img2_small, cv2.COLOR_RGB2GRAY)
-    sift = cv2.SIFT_create(nfeatures=1000) 
+def match_engine(img1_pil, img2_pil, mode="forensic", strict=False):
+    max_dim = 2000 if mode == "forensic" else 640
+    n_features = 10000 if mode == "forensic" else 1000
+    scales = [0.5, 1.0] if mode == "forensic" else [1.0]
+    img1 = resize_optimized(np.array(img1_pil), max_dim)
+    img2 = resize_optimized(np.array(img2_pil), max_dim)
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY)
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_RGB2GRAY)
+    sift = cv2.SIFT_create(nfeatures=n_features)
     kp1, des1 = sift.detectAndCompute(gray1, None)
     kp2, des2 = sift.detectAndCompute(gray2, None)
-    if des1 is None or des2 is None or len(des2) < 5: return False, 0, 0, None, "특징점 부족"
+    if des1 is None or des2 is None or len(des2) < 5: return False, 0, 0, None, "Err"
     flann = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), dict(checks=30))
-    matches = flann.knnMatch(des1, des2, k=2)
-    good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
-    final_matches = []
-    if len(good_matches) >= 4:
-        src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-        dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-        M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-        if M is not None:
-            matches_mask = mask.ravel().tolist()
-            final_matches = [good_matches[i] for i in range(len(good_matches)) if matches_mask[i]]
-    count = len(final_matches)
-    ratio = (count / len(kp2)) * 100 if len(kp2) > 0 else 0
-    res_img = cv2.drawMatches(img1_small, kp1, img2_small, kp2, final_matches, None, flags=2, matchColor=(0, 255, 0))
-    res_img_rgb = cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB)
-    is_genuine = (count >= 10) and (ratio >= 15.0)
-    msg = f"⚡ 매칭률: {ratio:.1f}% ({count}점)"
-    return is_genuine, count, ratio, res_img_rgb, msg
+    best_res = (0, 0.0, None)
+    for scale in scales:
+        try:
+            if scale == 1.0: r_gray2, r_img2 = gray2, img2
+            else:
+                h, w = gray2.shape
+                r_gray2 = cv2.resize(gray2, (int(w*scale), int(h*scale)))
+                r_img2 = cv2.resize(img2, (int(w*scale), int(h*scale)))
+                _, des2 = sift.detectAndCompute(r_gray2, None)
+            if des2 is None or len(des2) < 5: continue
+            matches = flann.knnMatch(des1, des2, k=2)
+            ratio_thresh = 0.7 if strict else 0.75
+            good = [m for m, n in matches if m.distance < ratio_thresh * n.distance]
+            if mode == "forensic":
+                final = verify_geometry(kp1, sift.detect(r_gray2, None), good, strict)
+            else:
+                src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+                dst_pts = np.float32([sift.detect(r_gray2, None)[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+                if len(good) < 4: continue
+                M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+                final = [good[i] for i in range(len(good)) if mask.ravel()[i]]
+            cnt = len(final)
+            ratio = (cnt / len(des2) * 100) if len(des2) > 0 else 0
+            if cnt > best_res[0]:
+                res_img = cv2.drawMatches(img1, kp1, r_img2, sift.detect(r_gray2,None), final, None, flags=2)
+                best_res = (cnt, ratio, cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB))
+                if mode == "forensic" and ratio > 15 and cnt > 200: break
+                if mode == "fast" and ratio > 15: break
+        except: continue
+    count, ratio, img = best_res
+    is_genuine = False
+    if mode == "forensic":
+        if strict: is_genuine = (count >= 50 and ratio >= 3.0)
+        else: is_genuine = (count >= 80) or (count >= 15 and ratio >= 10.0)
+        if ratio < 1.0: is_genuine = False
+    else: is_genuine = (count >= 10 and ratio >= 15.0)
+    return is_genuine, count, ratio, img
 
-# UI
+# --- [3] UI 및 로직 ---
+st.set_page_config(page_title="WA Platform", layout="wide", page_icon="🌐")
+
 if 'artworks' not in st.session_state: st.session_state['artworks'] = [] 
 if 'cars' not in st.session_state: st.session_state['cars'] = []
 if 'objects' not in st.session_state: st.session_state['objects'] = []
 
-st.set_page_config(page_title="WES Final Ver 4.3", layout="wide")
-st.title("📱 WES 통합 플랫폼 [Final Ver 4.3]")
-st.caption("시스템: Forensic Mode Added (정밀 모사품 대응)")
+# 언어 선택 사이드바
+with st.sidebar:
+    st.title("🌐 Language")
+    lang_code = st.radio("Select Language", ["KR", "EN", "CN"])
+    
+txt = LANG[lang_code] # 선택된 언어 팩 로드
 
-tab1, tab2, tab3 = st.tabs(["🎨 A. 진품 거래", "🚗 B. 스마트 주차", "🧸 C. 사물/미아 찾기"])
+st.title(f"📱 {txt['title']}")
 
+# 안심번호 생성기 (데모용)
+def get_safe_number():
+    return f"0505-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
+
+tab1, tab2, tab3 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3']])
+
+# 1. 미술품 탭
 with tab1:
-    st.header("🎨 미술품 진품 인증")
     c1, c2 = st.columns(2)
     with c1:
-        with st.form("art_reg"):
-            up = st.file_uploader("원본 등록", key="a_up")
-            name = st.text_input("작품명/소유자")
-            if st.form_submit_button("등록") and up:
+        st.subheader(txt['reg_title'])
+        with st.form("art_reg", clear_on_submit=True):
+            up = st.file_uploader(txt['upload_org'], key="a_up")
+            name = st.text_input(txt['name_input'])
+            if st.form_submit_button(txt['btn_reg']) and up:
                 st.session_state['artworks'].append({"image": Image.open(up), "name": name})
-                st.success(f"'{name}' 등록 완료")
+                st.success(txt['reg_success'])
     with c2:
-        ver = st.file_uploader("검증", key="a_ver")
-        # [New] 감별 모드 체크박스
-        strict_mode = st.checkbox("🕵️ S급 모사품 감별 (초정밀 모드)", help="체크 시 오차 범위를 1.0 미만으로 줄입니다. 사진을 반듯하게 찍어야 합니다.")
-        
-        if ver and st.button("🔍 검증 시작"):
-            t = Image.open(ver)
-            st.image(t, width=200)
-            with st.spinner("분석 중..."):
-                bm=None; mm=0; br=0; bi=None; bmsg=""
-                for art in st.session_state['artworks']:
-                    # strict_mode 값 전달
-                    res = match_art_forensic(art['image'], t, strict_mode)
-                    if res[1] > mm: mm=res[1]; br=res[2]; bm=art; bi=res[3]; bmsg=res[4]
-                if bm and res[0]: 
-                    st.success(f"🎉 진품입니다! (원본: {bm['name']})")
-                    st.info(bmsg); st.image(bi, use_container_width=True)
-                else: 
-                    st.error("🚨 가품(또는 모사품)입니다.")
-                    if mm > 0: st.warning(f"유사점 {mm}개 - 구조적 불일치 ({bmsg})")
+        st.subheader(txt['ver_title'])
+        ver = st.file_uploader(txt['upload_ver'], key="a_ver")
+        strict = st.checkbox(txt['mode_strict'], key="strict")
+        if ver and st.button(txt['btn_ver']):
+            t_img = Image.open(ver)
+            if not st.session_state['artworks']: st.error(txt['err_no_data']); st.stop()
+            best = (None, 0, 0, None)
+            for item in st.session_state['artworks']:
+                is_g, c, r, img = match_engine(item['image'], t_img, "forensic", strict)
+                if c > best[1]: best = (item, c, r, img)
+            item, c, r, img = best
+            is_genuine = False
+            if strict: is_genuine = (c >= 50 and r >= 3.0)
+            else: is_genuine = (c >= 80) or (c >= 15 and r >= 10.0)
+            if r < 1.0: is_genuine = False
 
+            if item and is_genuine:
+                st.success(f"{txt['success_gen']} ({item['name']})")
+                st.write(f"{txt['info_score']}: {c} / {txt['info_ratio']}: {r:.1f}%")
+                st.image(img, use_container_width=True)
+            else: st.error(txt['fail_gen'])
+
+# 2. 주차 탭 (안심번호 추가)
 with tab2:
-    st.header("🚗 스마트 주차 관제")
     c3, c4 = st.columns(2)
     with c3:
-        with st.form("car_reg"):
-            up = st.file_uploader("입차 차량", key="c_up")
-            no = st.text_input("차량 번호")
-            if st.form_submit_button("입차") and up:
-                st.session_state['cars'].append({"image": Image.open(up), "no": no, "time": datetime.now()})
-                st.success(f"차량 '{no}' 입차 완료")
+        st.subheader(txt['reg_title'])
+        with st.form("car_reg", clear_on_submit=True):
+            up = st.file_uploader(txt['upload_org'], key="c_up")
+            no = st.text_input(txt['car_input'])
+            # 실제 번호 입력받지만, 내부적으로 안심번호 생성
+            phone = st.text_input(txt['obj_input']) 
+            if st.form_submit_button(txt['btn_reg']) and up:
+                safe_num = get_safe_number()
+                st.session_state['cars'].append({
+                    "image": Image.open(up), "no": no, "phone": safe_num, "time": datetime.now()
+                })
+                st.success(f"{txt['reg_success']} ({txt['safe_num_msg']} {safe_num})")
     with c4:
-        ver = st.file_uploader("출차 인식", key="c_ver")
-        if ver and st.button("⚡ 정산 요청"):
-            t = Image.open(ver)
-            bm=None; mm=0; br=0; bi=None; bmsg=""
-            for car in st.session_state['cars']:
-                res = match_fast_rapid(car['image'], t)
-                if res[1] > mm: mm=res[1]; br=res[2]; bm=car; bi=res[3]; bmsg=res[4]
-            if bm and res[0]:
-                duration = datetime.now() - bm['time']
-                fee = (duration.seconds // 60 // 10) * 1000 
-                st.success(f"✅ 차량 인식: {bm['no']}")
-                st.info(f"주차 시간: {duration.seconds//60}분 / 요금: {fee:,}원")
-                st.image(bi, use_container_width=True)
-            else: st.error("🚫 인식 실패"); st.warning(bmsg)
+        st.subheader(txt['ver_title'])
+        ver = st.file_uploader(txt['upload_ver'], key="c_ver")
+        if ver and st.button(txt['btn_ver']):
+            t_img = Image.open(ver)
+            if not st.session_state['cars']: st.error(txt['err_no_data']); st.stop()
+            best = (None, 0, 0)
+            for item in st.session_state['cars']:
+                is_g, c, r, _ = match_engine(item['image'], t_img, "fast")
+                if c > best[1]: best = (item, c, r)
+            item, c, r = best
+            if item and c >= 10 and r >= 15.0:
+                duration = datetime.now() - item['time']
+                fee = (duration.seconds // 60 // 10) * 1000
+                st.success(f"{txt['success_gen']} : {item['no']}")
+                st.info(f"{txt['parking_time']}: {duration.seconds//60}{txt['min']} / {txt['calc_fee']}: {fee:,}")
+                
+                # 안심번호 통화 버튼
+                st.markdown("---")
+                st.write(f"📞 **{txt['safe_num_msg']} {item['phone']}**")
+                if st.button(txt['btn_call'], key="call_car"):
+                    st.toast(f"{txt['calling_msg']} ({item['phone']})")
+            else: st.error(txt['fail_gen'])
 
+# 3. 사물 탭 (안심번호 추가)
 with tab3:
-    st.header("🧸 사물/미아 찾기")
     c5, c6 = st.columns(2)
     with c5:
-        with st.form("obj_reg"):
-            up = st.file_uploader("대상 등록", key="o_up")
-            info = st.text_input("이름/연락처")
-            if st.form_submit_button("등록") and up:
-                st.session_state['objects'].append({"image": Image.open(up), "info": info})
-                st.success(f"'{info}' 등록 완료")
+        st.subheader(txt['reg_title'])
+        with st.form("obj_reg", clear_on_submit=True):
+            up = st.file_uploader(txt['upload_org'], key="o_up")
+            info = st.text_input(txt['obj_input'])
+            if st.form_submit_button(txt['btn_reg']) and up:
+                safe_num = get_safe_number()
+                st.session_state['objects'].append({"image": Image.open(up), "info": info, "phone": safe_num})
+                st.success(f"{txt['reg_success']} ({txt['safe_num_msg']} {safe_num})")
     with c6:
-        ver = st.file_uploader("발견물 촬영", key="o_ver")
-        if ver and st.button("⚡ 보호자 찾기"):
-            t = Image.open(ver)
-            bm=None; mm=0; br=0; bi=None; bmsg=""
-            for obj in st.session_state['objects']:
-                res = match_fast_rapid(obj['image'], t)
-                if res[1] > mm: mm=res[1]; br=res[2]; bm=obj; bi=res[3]; bmsg=res[4]
-            if bm and res[0]:
-                st.success(f"✅ 확인됨!")
-                st.info(f"보호자 정보: {bm['info']}")
-                st.image(bi, use_container_width=True)
-            else: st.error("🚫 정보 없음"); st.warning(bmsg)
+        st.subheader(txt['ver_title'])
+        ver = st.file_uploader(txt['upload_ver'], key="o_ver")
+        if ver and st.button(txt['btn_ver']):
+            t_img = Image.open(ver)
+            if not st.session_state['objects']: st.error(txt['err_no_data']); st.stop()
+            best = (None, 0, 0)
+            for item in st.session_state['objects']:
+                is_g, c, r, _ = match_engine(item['image'], t_img, "fast")
+                if c > best[1]: best = (item, c, r)
+            item, c, r = best
+            if item and c >= 10 and r >= 15.0:
+                st.success(f"{txt['success_gen']}")
+                st.info(f"Owner: {item['info']}")
+                
+                # 안심번호 통화 버튼
+                st.markdown("---")
+                st.write(f"📞 **{txt['safe_num_msg']} {item['phone']}**")
+                if st.button(txt['btn_call'], key="call_obj"):
+                    st.toast(f"{txt['calling_msg']} ({item['phone']})")
+            else: st.error(txt['fail_gen'])
